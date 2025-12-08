@@ -1,23 +1,23 @@
 {% set include_remote_db = (REMOTE_DB_IP is defined and REMOTE_DB_PORT is defined) %}
 {
     "INSTANCES": {
-        "redis":{
+        "valkey":{
             "hostname" : "{{HOST_IP}}",
-            "port" : {{REDIS_PORT}},
-            "unix_socket_path" : "/var/run/redis{{DEV}}/redis.sock",
+            "port" : {{VALKEY_PORT}},
+            "unix_socket_path" : "/var/run/valkey{{DEV}}/valkey.sock",
             "persistence_for_warm_boot" : "yes"
             {% if DATABASE_TYPE is defined and DATABASE_TYPE != "" %}
             ,"database_type": "{{DATABASE_TYPE}}"
             {% endif %}
         },
-        "redis_chassis":{
-            "hostname" : "redis_chassis.server",
+        "valkey_chassis":{
+            "hostname" : "valkey_chassis.server",
             "port": 6380,
-            "unix_socket_path": "/var/run/redis-chassis/redis_chassis.sock",
+            "unix_socket_path": "/var/run/valkey-chassis/valkey_chassis.sock",
             "persistence_for_warm_boot" : "yes"
         }
 {% if include_remote_db %}
-        ,"remote_redis":{
+        ,"remote_valkey":{
             "hostname" : "{{REMOTE_DB_IP}}",
             "port" : {{REMOTE_DB_PORT}},
             "unix_socket_path": "",
@@ -27,10 +27,10 @@
 {% if DATABASE_TYPE is defined and DATABASE_TYPE == "dpudb" %}
 {% else %}
         ,
-        "redis_bmp":{
+        "valkey_bmp":{
             "hostname" : "{{HOST_IP}}",
             "port" : {{BMP_DB_PORT}},
-            "unix_socket_path" : "/var/run/redis{{DEV}}/redis_bmp.sock",
+            "unix_socket_path" : "/var/run/valkey{{DEV}}/valkey_bmp.sock",
             "persistence_for_warm_boot" : "yes"
         }
 {% endif %}
@@ -39,112 +39,112 @@
         "APPL_DB" : {
             "id" : 0,
             "separator": ":",
-            "instance" : "redis"
+            "instance" : "valkey"
         },
         "ASIC_DB" : {
             "id" : 1,
             "separator": ":",
-            "instance" : "redis"
+            "instance" : "valkey"
         },
         "COUNTERS_DB" : {
             "id" : 2,
             "separator": ":",
-            "instance" : "redis"
+            "instance" : "valkey"
         },
         "LOGLEVEL_DB" : {
             "id" : 3,
             "separator": ":",
-            "instance" : "redis"
+            "instance" : "valkey"
         },
         "CONFIG_DB" : {
             "id" : 4,
             "separator": "|",
-            "instance" : "redis"
+            "instance" : "valkey"
         },
         "PFC_WD_DB" : {
             "id" : 5,
             "separator": ":",
-            "instance" : "redis"
+            "instance" : "valkey"
         },
         "FLEX_COUNTER_DB" : {
             "id" : 5,
             "separator": ":",
-            "instance" : "redis"
+            "instance" : "valkey"
         },
         "STATE_DB" : {
             "id" : 6,
             "separator": "|",
-            "instance" : "redis"
+            "instance" : "valkey"
         },
         "SNMP_OVERLAY_DB" : {
             "id" : 7,
             "separator": "|",
-            "instance" : "redis"
+            "instance" : "valkey"
         },
         "RESTAPI_DB" : {
             "id" : 8,
             "separator": "|",
-            "instance" : "redis"
+            "instance" : "valkey"
         },
         "GB_ASIC_DB" : {
             "id" : 9,
             "separator": ":",
-            "instance" : "redis"
+            "instance" : "valkey"
         },
         "GB_COUNTERS_DB" : {
             "id" : 10,
             "separator": ":",
-            "instance" : "redis"
+            "instance" : "valkey"
         },
         "GB_FLEX_COUNTER_DB" : {
             "id" : 11,
             "separator": ":",
-            "instance" : "redis"
+            "instance" : "valkey"
         },
         "CHASSIS_APP_DB" : {
             "id" : 12,
             "separator": "|",
-            "instance" : "redis_chassis"
+            "instance" : "valkey_chassis"
         },
         "CHASSIS_STATE_DB" : {
             "id" : 13,
             "separator": "|",
-            "instance" : "redis_chassis"
+            "instance" : "valkey_chassis"
         },
         "APPL_STATE_DB" : {
             "id" : 14,
             "separator": ":",
-            "instance" : "redis"
+            "instance" : "valkey"
         }
 {% if DATABASE_TYPE is defined and DATABASE_TYPE == "dpudb" %}
         ,
         "DPU_APPL_DB" : {
             "id" : 15,
             "separator": ":",
-            "instance" : {% if include_remote_db %} "remote_redis" {% else %} "redis" {% endif %},
+            "instance" : {% if include_remote_db %} "remote_valkey" {% else %} "valkey" {% endif %},
             "format": "proto"
         },
         "DPU_APPL_STATE_DB" : {
             "id" : 16,
             "separator": "|",
-            "instance" : {% if include_remote_db %} "remote_redis" {% else %} "redis" {% endif %}
+            "instance" : {% if include_remote_db %} "remote_valkey" {% else %} "valkey" {% endif %}
         },
         "DPU_STATE_DB" : {
             "id" : 17,
             "separator": "|",
-            "instance" : {% if include_remote_db %} "remote_redis" {% else %} "redis" {% endif %}
+            "instance" : {% if include_remote_db %} "remote_valkey" {% else %} "valkey" {% endif %}
         },
         "DPU_COUNTERS_DB" : {
             "id" : 18,
             "separator": ":",
-            "instance" : {% if include_remote_db %} "remote_redis" {% else %} "redis" {% endif %}
+            "instance" : {% if include_remote_db %} "remote_valkey" {% else %} "valkey" {% endif %}
         }
 {% else %}
         ,
         "BMP_STATE_DB" : {
             "id" : 20,
             "separator": "|",
-            "instance" : "redis_bmp"
+            "instance" : "valkey_bmp"
         }
 {% endif %}
     },
