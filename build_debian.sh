@@ -299,14 +299,14 @@ sudo mkdir -p $FILESYSTEM_ROOT/etc/systemd/system/docker.service.d/
 sudo cp files/docker/docker.service.conf $_
 
 ## Create default user
-## Note: user should be in the group with the same name, and also in sudo/docker/redis groups
+## Note: user should be in the group with the same name, and also in sudo/docker/valkey groups
 sudo LANG=C chroot $FILESYSTEM_ROOT useradd -G sudo,docker $USERNAME -c "$DEFAULT_USERINFO" -m -s /bin/bash
 ## Create password for the default user
 echo "$USERNAME:$PASSWORD" | sudo LANG=C chroot $FILESYSTEM_ROOT chpasswd
 
-## Create redis group
-sudo LANG=C chroot $FILESYSTEM_ROOT groupadd -f redis
-sudo LANG=C chroot $FILESYSTEM_ROOT usermod -aG redis $USERNAME
+## Create valkey group
+sudo LANG=C chroot $FILESYSTEM_ROOT groupadd -f valkey
+sudo LANG=C chroot $FILESYSTEM_ROOT usermod -aG valkey $USERNAME
 
 if [[ $CONFIGURED_ARCH == amd64 ]]; then
     ## Pre-install hardware drivers
@@ -547,8 +547,8 @@ sudo https_proxy=$https_proxy LANG=C chroot $FILESYSTEM_ROOT pip3 install 'scapy
 # Install GCC, needed for building/installing some Python packages
 sudo LANG=C DEBIAN_FRONTEND=noninteractive chroot $FILESYSTEM_ROOT apt-get -y install gcc
 
-## Create /var/run/redis folder for docker-database to mount
-sudo mkdir -p $FILESYSTEM_ROOT/var/run/redis
+## Create /var/run/valkey folder for docker-database to mount
+sudo mkdir -p $FILESYSTEM_ROOT/var/run/valkey
 
 ## Config DHCP for eth0
 sudo tee -a $FILESYSTEM_ROOT/etc/network/interfaces > /dev/null <<EOF
