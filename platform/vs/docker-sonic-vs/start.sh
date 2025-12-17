@@ -95,11 +95,11 @@ else
    echo "10.8.1.200 redis_chassis.server" >> /etc/hosts
 fi
 
-supervisorctl start redis-server
+supervisorctl start valkey-server
 
 start_chassis_db=`sonic-cfggen -v DEVICE_METADATA.localhost.start_chassis_db -y $chassisdb_cfg_file`
 if [[ "$HOSTNAME" == *"supervisor"* ]] || [ "$start_chassis_db" == "1" ]; then
-   supervisorctl start redis-chassis
+   supervisorctl start valkey-chassis
 fi
 
 conn_chassis_db=`sonic-cfggen -v DEVICE_METADATA.localhost.connect_to_chassis_db -y $chassisdb_cfg_file`
