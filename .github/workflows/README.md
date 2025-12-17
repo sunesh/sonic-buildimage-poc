@@ -36,3 +36,22 @@ B -- NO --> STOP
 B1 -- NO --> STOP
 B2 -- NO --> STOP
 ```
+
+4. push-to-upstream:
+```mermaid
+graph
+Start(PR created in fork) --> A(Cherry-pick commits to upstream/master)
+A --> B{cherry-pick<br>conflict?}
+B -- YES --> C(Add comment:<br>manual PR needed) --> STOP(STOP)
+B -- NO --> D(Push branch to upstream)
+D --> E(Create PR to sonic-net/sonic-buildimage)
+E --> F(Add comment:<br>upstream PR link)
+```
+
+**Prerequisites for push-to-upstream:**
+- A GitHub Personal Access Token (PAT) with repo scope stored as `UPSTREAM_TOKEN` secret
+- The PAT must have write access to the upstream repository (sonic-net/sonic-buildimage)
+
+**Usage:**
+1. Create a PR in this fork targeting the master branch
+2. The workflow will automatically create a corresponding PR to the upstream repository

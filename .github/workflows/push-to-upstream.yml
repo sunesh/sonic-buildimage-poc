@@ -1,0 +1,172 @@
+# This workflow creates a PR to the upstream sonic-net/sonic-buildimage repository
+# when a PR is created in this fork.
+#
+# Prerequisites:
+# 1. A GitHub Personal Access Token (PAT) with repo scope stored as UPSTREAM_TOKEN secret
+# 2. The PAT must have write access to the upstream repository (sonic-net/sonic-buildimage)
+#
+# Usage:
+# 1. Create a PR in this fork targeting the master branch
+# 2. The workflow will automatically create a corresponding PR to the upstream repository
+
+name: Push PR to Upstream
+
+on:
+  pull_request_target:
+    types:
+      - opened
+    branches:
+      - master
+
+jobs:
+  push_to_upstream:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout PR head
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Debug - Print event information
+        env:
+          GITHUB_CONTEXT: ${{ toJson(github) }}
+        run: |
+          echo "Event: ${{ github.event_name }}"
+          echo "Action: ${{ github.event.action }}"
+          echo "PR Number: ${{ github.event.pull_request.number }}"
+          echo "PR Title: ${{ github.event.pull_request.title }}"
+          echo "Head SHA: ${{ github.event.pull_request.head.sha }}"
+          echo "Head Ref: ${{ github.event.pull_request.head.ref }}"
+
+      - name: Configure Git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Add upstream remote
+        env:
+          UPSTREAM_TOKEN: ${{ secrets.UPSTREAM_TOKEN }}
+        run: |
+          # Add the upstream repository as a remote
+          git remote add upstream https://x-access-token:${UPSTREAM_TOKEN}@github.com/sonic-net/sonic-buildimage.git
+          git fetch upstream master
+          git remote -v
+
+      - name: Create branch with PR changes
+        id: create_branch
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          set -e
+          
+          # Create a unique branch name for the upstream PR
+          BRANCH_NAME="fork-pr-${PR_NUMBER}-$(date +%s)"
+          echo "branch_name=${BRANCH_NAME}" >> $GITHUB_OUTPUT
+          
+          # Get the list of commits in the PR (commits between base and head)
+          git fetch origin $HEAD_REF
+          
+          # Create a new branch from upstream/master
+          git checkout -b ${BRANCH_NAME} upstream/master
+          
+          # Get commits from the PR branch that are not in master
+          # We cherry-pick each commit from the PR
+          COMMITS=$(git log --reverse --pretty=format:"%H" origin/master..origin/${HEAD_REF})
+          
+          if [ -z "$COMMITS" ]; then
+            echo "No commits to cherry-pick"
+            echo "create_success=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          
+          echo "Commits to cherry-pick:"
+          echo "$COMMITS"
+          
+          CHERRY_PICK_SUCCESS=true
+          for commit in $COMMITS; do
+            echo "Cherry-picking commit: $commit"
+            if ! git cherry-pick $commit --strategy-option=theirs; then
+              echo "Cherry-pick failed for commit $commit"
+              git cherry-pick --abort || true
+              CHERRY_PICK_SUCCESS=false
+              break
+            fi
+          done
+          
+          if [ "$CHERRY_PICK_SUCCESS" = "true" ]; then
+            echo "All cherry-picks successful"
+            echo "create_success=true" >> $GITHUB_OUTPUT
+          else
+            echo "Cherry-pick failed"
+            echo "create_success=false" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+
+      - name: Push branch to upstream
+        if: steps.create_branch.outputs.create_success == 'true'
+        env:
+          UPSTREAM_TOKEN: ${{ secrets.UPSTREAM_TOKEN }}
+          BRANCH_NAME: ${{ steps.create_branch.outputs.branch_name }}
+        run: |
+          git push upstream HEAD:${BRANCH_NAME}
+
+      - name: Create PR to upstream
+        if: steps.create_branch.outputs.create_success == 'true'
+        id: create_upstream_pr
+        env:
+          UPSTREAM_TOKEN: ${{ secrets.UPSTREAM_TOKEN }}
+          BRANCH_NAME: ${{ steps.create_branch.outputs.branch_name }}
+          PR_TITLE: ${{ github.event.pull_request.title }}
+          PR_BODY: ${{ github.event.pull_request.body }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: |
+          # Authenticate with GitHub CLI
+          echo ${UPSTREAM_TOKEN} | gh auth login --with-token
+          
+          # Create the PR body with reference to the original PR
+          UPSTREAM_PR_BODY="## Original PR
+
+This PR was automatically created from a fork PR.
+
+- **Original PR**: ${PR_URL}
+- **Original Author**: @${PR_AUTHOR}
+- **Fork PR Number**: #${PR_NUMBER}
+
+## Description
+
+${PR_BODY}"
+          
+          # Create the PR and capture the URL
+          UPSTREAM_PR_URL=$(gh pr create \
+            --repo sonic-net/sonic-buildimage \
+            --head ${BRANCH_NAME} \
+            --base master \
+            --title "[Fork PR #${PR_NUMBER}] ${PR_TITLE}" \
+            --body "${UPSTREAM_PR_BODY}")
+          
+          echo "upstream_pr_url=${UPSTREAM_PR_URL}" >> $GITHUB_OUTPUT
+          echo "Created upstream PR: ${UPSTREAM_PR_URL}"
+
+      - name: Comment on original PR with upstream link
+        if: steps.create_branch.outputs.create_success == 'true'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          UPSTREAM_PR_URL: ${{ steps.create_upstream_pr.outputs.upstream_pr_url }}
+        run: |
+          gh pr comment ${PR_NUMBER} --body "A corresponding PR has been created to the upstream sonic-net/sonic-buildimage repository: ${UPSTREAM_PR_URL}"
+
+      - name: Handle failure
+        if: failure()
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          gh pr comment ${PR_NUMBER} --body "Failed to create upstream PR. This may be due to cherry-pick conflicts or other issues. Please manually create a PR to the upstream repository."
